@@ -9,13 +9,11 @@
 using namespace std;
 using namespace std::chrono;
 
-static const int ITERATIONS = 100;
+static const int ITERATIONS = 10;
 
 long getTimeInMillis() {
     return system_clock::now().time_since_epoch() / milliseconds(1);
 }
-
-
 
 void testAligned(const std::string& name, std::function<void(char*,int)> func) {
     std::cout << name << ";";
@@ -83,13 +81,16 @@ void MemZeroMemset(char* data, int dataSize) {
     std::memset(data,0,dataSize);
 }
 
+#if defined(__SSE__)
 void MemZeroSSEAlignedStream(char* data, int dataSize) {
     __m64 zero = _mm_setzero_si64();
     for(int i = 0; i < dataSize/8; i++) {
         _mm_stream_pi(reinterpret_cast<__m64*>(data) + i , zero);
     }
 }
+#endif
 
+#if defined(__SSE2__)
 void MemZeroSSE2Unaligned(char* data, int dataSize) {
     __m128i zero = _mm_setzero_si128();
     for(int i = 0; i < dataSize/16; i++) {
@@ -110,46 +111,57 @@ void MemZeroSSE2AlignedStream(char* data, int dataSize) {
         _mm_stream_si128(reinterpret_cast<__m128i*>(data) + i , zero);
     }
 }
+#endif
 
+#if defined(__AVX__)
 void MemZeroAVXUnaligned(char* data, int dataSize) {
+     _mm256_zeroupper();
     __m256i zero = _mm256_setzero_si256();
     for(int i = 0; i < dataSize/32; i++) {
         _mm256_storeu_si256(reinterpret_cast<__m256i*>(data) + i , zero);
     }
+    _mm256_zeroupper();
 }
 
 void MemZeroAVXAligned(char* data, int dataSize) {
+     _mm256_zeroupper();
     __m256i zero = _mm256_setzero_si256();
     for(int i = 0; i < dataSize/32; i++) {
         _mm256_store_si256(reinterpret_cast<__m256i*>(data) + i , zero);
     }
+     _mm256_zeroupper();
 }
 
 void MemZeroAVXAlignedStream(char* data, int dataSize) {
+     _mm256_zeroupper();
     __m256i zero = _mm256_setzero_si256();
     for(int i = 0; i < dataSize/32; i++) {
         _mm256_stream_si256(reinterpret_cast<__m256i*>(data) + i , zero);
     }
+     _mm256_zeroupper();
 }
+#endif
 
 
 int main()
 {
-
     testUnaligned("std::memset",MemZeroMemset);
     testUnaligned("Loop(char)",MemZeroLoop);
     testUnaligned("Loop(short)",MemZeroLoopShort);
     testUnaligned("Loop(int)",MemZeroLoopInt);
     testUnaligned("Loop(long)",MemZeroLoopLong);
-
+#if defined(__SSE__)
     testAligned("SSE(aligned_stream)",MemZeroSSEAlignedStream);
-
+#endif
+#if defined(__SSE2__)
     testUnaligned("SSE2(unlaligned)",MemZeroSSE2Unaligned);
     testAligned("SSE2(aligned)",MemZeroSSE2Aligned);
     testAligned("SSE2(aligned_stream)",MemZeroSSE2AlignedStream);
-
+#endif
+#if defined(__AVX__)
     testUnaligned("AVX(unlaligned)",MemZeroAVXUnaligned);
     testAligned("AVX(aligned)",MemZeroAVXAligned);
     testAligned("AVX(aligned_stream)",MemZeroAVXAlignedStream);
+#endif
     return 0;
 }
