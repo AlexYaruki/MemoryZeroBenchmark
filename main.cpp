@@ -4,7 +4,10 @@
 #include <cmath>
 #include <cstring>
 #include <string>
-#include <immintrin.h>
+
+#if defined(__SSE__) || defined(__SSE2__) || defined(__AVX__)
+#   include <immintrin.h>
+#endif
 
 using namespace std;
 using namespace std::chrono;
@@ -60,19 +63,19 @@ void MemZeroLoop(char* data, int dataSize) {
 }
 
 void MemZeroLoopShort(char* data, int dataSize) {
-    for(int i = 0; i < dataSize/2; i++) {
+    for(int i = 0; i < dataSize/sizeof(short); i++) {
         reinterpret_cast<short*>(data)[i] = 0;
     }
 }
 
 void MemZeroLoopInt(char* data, int dataSize) {
-    for(int i = 0; i < dataSize/4; i++) {
+    for(int i = 0; i < dataSize/sizeof(int); i++) {
         reinterpret_cast<int*>(data)[i] = 0;
     }
 }
 
 void MemZeroLoopLong(char* data, int dataSize) {
-    for(int i = 0; i < dataSize/8; i++) {
+    for(int i = 0; i < dataSize/sizeof(long); i++) {
         reinterpret_cast<long*>(data)[i] = 0;
     }
 }
@@ -145,6 +148,10 @@ void MemZeroAVXAlignedStream(char* data, int dataSize) {
 
 int main()
 {
+    std::cout << "sizeof(char): " << sizeof(char) << std::endl;
+    std::cout << "sizeof(short): " << sizeof(short) << std::endl;
+    std::cout << "sizeof(int): " << sizeof(int) << std::endl;
+    std::cout << "sizeof(long): " << sizeof(long) << std::endl;
     testUnaligned("std::memset",MemZeroMemset);
     testUnaligned("Loop(char)",MemZeroLoop);
     testUnaligned("Loop(short)",MemZeroLoopShort);
